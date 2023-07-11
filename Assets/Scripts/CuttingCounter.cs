@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,8 +6,17 @@ using UnityEngine;
 
 public class CuttingCounter : BaseCounter
 {
+    public event EventHandler<OnProgressChangedEventArgs> OnProgressChanged;
+    public class OnProgressChangedEventArgs : EventArgs
+    {
+        public float progressNormalized;
+    }
+
+    public event EventHandler onCut;
 
     [SerializeField] private CuttingRecipeSO[] cuttingRecipeSOArray;
+
+    private int cuttingProgress;
 
     public override void Interact(Player player)
     {
@@ -20,6 +30,8 @@ public class CuttingCounter : BaseCounter
 
                 // player has kitchen object. Give to counter
                 player.GetKitchenObject().SetKitchenObjectParent(this);
+                cuttingProgress = 0;
+                OnProgressChanged?.Invoke(this, new OnProgressChangedEventArgs { progressNormalized = 0 });
             }
         }
         else
@@ -41,19 +53,28 @@ public class CuttingCounter : BaseCounter
     {
         if(HasKitchenObject() && HasCuttableKitchenObject(GetKitchenObject().GetKitchenObjectSO()))
         {
-            // Find a matching recipe
-            var matchingRecipeSO = cuttingRecipeSOArray.FirstOrDefault(a => a.input == GetKitchenObject().GetKitchenObjectSO());
+            cuttingProgress++;
+            onCut?.Invoke(this, EventArgs.Empty);
+            var cuttingRecipe = GetCuttingRecipeSOWithInput(GetKitchenObject().GetKitchenObjectSO());
+            OnProgressChanged?.Invoke(this, new OnProgressChangedEventArgs { progressNormalized = (float)cuttingProgress / cuttingRecipe.cuttingProgressMax });
 
-            // destroy current kitchen object
-            GetKitchenObject().DestroySelf();
-
-            // spawn cut kitchen object
-            if(matchingRecipeSO != null)
+            if (cuttingProgress >= cuttingRecipe.cuttingProgressMax)
             {
-                KitchenObject.SpawnKitchenObject(matchingRecipeSO.output, this);
+               // var matchingRecipeSO = cuttingRecipeSOArray.FirstOrDefault(a => a.input == GetKitchenObject().GetKitchenObjectSO());
+
+                // destroy current kitchen object
+                GetKitchenObject().DestroySelf();
+
+                // spawn cut kitchen object
+                if (cuttingRecipe != null)
+                {
+                    KitchenObject.SpawnKitchenObject(cuttingRecipe.output, this);
+                }
             }
         }
     }
 
-    private bool HasCuttableKitchenObject(KitchenObjectSO kitchenObjectSO) => cuttingRecipeSOArray.Any(a => a.input == kitchenObjectSO);
+    private CuttingRecipeSO GetCuttingRecipeSOWithInput(KitchenObjectSO kitchenObjectSO) => cuttingRecipeSOArray.FirstOrDefault(a => a.input == kitchenObjectSO);
+
+    private bool HasCuttableKitchenObject(KitchenObjectSO kitchenObjectSO) => GetCuttingRecipeSOWithInput(kitchenObjectSO) != null;
 }
