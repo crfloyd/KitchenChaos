@@ -4,12 +4,15 @@ using UnityEngine;
 
 public abstract class BaseCounter : MonoBehaviour, IKitchenObjectParent
 {
-    [SerializeField] protected KitchenObjectSO kitchenObjectSO;
     [SerializeField] protected Transform counterTopPoint;
 
     protected KitchenObject kitchenObject;
 
     public abstract void Interact(Player player);
+
+    public virtual void InteractAlternate(Player player)
+    {
+    }
 
     public void ClearKitchenObject()
     {
